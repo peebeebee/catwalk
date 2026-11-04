@@ -3,7 +3,7 @@
 A fluffy black cat, a room full of furniture, and mice running off with the
 cheese. Boop them on the nose and they'll drop it. Nobody gets hurt.
 
-**Play it:** https://peebeebee.github.io/catwalk/
+**Play it:** https://peterbriers.be/catwalk/
 
 ![The cat walking past the window](docs/screenshot.png)
 
