@@ -48,8 +48,8 @@
       box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
     }
 
-    /* Touch buttons, placed by layoutTouch: see-through over the room when
-       the phone is sideways, solid on the frame below it when upright. */
+    /* Touch buttons, placed by layoutTouch: see-through, over the bottom
+       corners of the room. */
     #touch .pad {
       position: absolute;
       display: flex;
@@ -67,10 +67,6 @@
       border: 2px solid rgba(91, 70, 54, 0.3);
       background: rgba(255, 251, 244, 0.55);
       touch-action: none;
-    }
-
-    #touch.portrait button {
-      background: rgba(255, 251, 244, 0.92);
     }
 
     #touch button.jump {
@@ -104,6 +100,68 @@
 
     #touch.muted .sound-off {
       display: inline;
+    }
+
+    #touch .full-off,
+    #touch.full .full-on {
+      display: none;
+    }
+
+    #touch.full .full-off {
+      display: inline;
+    }
+
+    /* On a touch screen held upright: turn it sideways to play. */
+    #rotate {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px;
+      text-align: center;
+      background: #3a2e26;
+      color: #faf6ef;
+      font: 600 19px system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    #rotate img {
+      width: 96px;
+      height: 96px;
+      border-radius: 22px;
+    }
+
+    #rotate h1 {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 800;
+    }
+
+    #rotate svg {
+      width: 64px;
+      height: 64px;
+      fill: none;
+      stroke: #f2c94c;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      animation: turn 2.4s ease-in-out infinite;
+    }
+
+    @keyframes turn {
+      0%, 25% { transform: rotate(0deg); }
+      55%, 100% { transform: rotate(-90deg); }
+    }
+
+    #rotate button {
+      padding: 12px 22px;
+      font: 700 18px system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #fff;
+      background: #c0662a;
+      border: none;
+      border-radius: 14px;
     }
 
     /* The name for a high score on a touch screen, at the top where the
@@ -162,8 +220,16 @@
     </div>
     <div class="pad" id="pad-menu">
       <button data-tap="KeyP" class="small" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M7 5 H10.5 V19 H7 Z M13.5 5 H17 V19 H13.5 Z" stroke="none" /></svg></button>
+      <button data-tap="fullscreen" class="small" id="fullscreen-button" aria-label="Full screen" hidden><svg viewBox="0 0 24 24" fill="none"><path class="full-on" d="M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15" /><path class="full-off" d="M9 4 V9 H4 M20 9 H15 V4 M15 20 V15 H20 M4 15 H9 V20" /></svg></button>
       <button data-tap="KeyM" class="small" aria-label="Sound on or off"><svg viewBox="0 0 24 24"><path d="M3.5 9 H7.5 L12.5 5 V19 L7.5 15 H3.5 Z" stroke="none" /><path class="sound-on" d="M15.5 9 Q18 12 15.5 15 M18 6.5 Q22.5 12 18 17.5" fill="none" /><path class="sound-off" d="M15.5 9.5 L20.5 14.5 M20.5 9.5 L15.5 14.5" fill="none" /></svg></button>
     </div>
+  </div>
+  <div id="rotate" hidden>
+    <img src="./icons/icon-192.png" alt="" />
+    <h1>Catwalk</h1>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2" /><path d="M11 18.5 H13" /></svg>
+    <p>Turn your phone sideways to play</p>
+    <button id="rotate-fullscreen" hidden>Play full screen</button>
   </div>
   <form id="name-form" hidden>
     <input id="name-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="Your name" aria-label="Your name" />
@@ -591,13 +657,12 @@
     // It is VIEW_W wide, so as much of the room is in sight everywhere: a
     // screen wider than 16:9 shows less of the plain wall at the top rather
     // than bars at the sides (down to MIN_VIEW_H), and one narrower than 16:9
-    // gets bars above and below. A phone held upright shows a narrower slice,
-    // PORTRAIT_VIEW_W, across the top, with the touch buttons below.
+    // gets bars above and below. A touch screen held upright asks to be
+    // turned sideways (see #rotate).
     const ROOM_W = 1920;
     const ROOM_H = 720;
     const VIEW_W = 1280;
     const MIN_VIEW_H = 520;
-    const PORTRAIT_VIEW_W = 800;
     const floorY = 604;
     // The part of the room in view: its size, and the room y at its top edge
     // (it always reaches down to the bottom of the room). `safe` is how far
@@ -612,8 +677,8 @@
     // last input was a touch; a key press turns them off again.
     let touchUI = window.matchMedia("(pointer: coarse)").matches;
     // Where fitCanvas put things, in CSS px: the canvas, the screen's safe
-    // insets, CSS px per room unit, and whether the phone is upright.
-    const screenLayout = { left: 0, top: 0, width: 0, height: 0, scale: 1, insets: null, portrait: false };
+    // insets, CSS px per room unit, and where the touch buttons start.
+    const screenLayout = { left: 0, top: 0, width: 0, height: 0, scale: 1, insets: null, buttonsTop: Infinity };
     // Device pixels per room unit (the screen fit times devicePixelRatio).
     let pixelScale = 1;
     let nowSeconds = 0;
@@ -1012,29 +1077,14 @@
       const H = window.innerHeight;
       if (W === 0 || H === 0) return false;
       const insets = safeInsets();
-      const portrait = touchUI && H > W;
-      let scale;
-      let left;
-      let top;
-      if (portrait) {
-        // The room across the top, leaving at least 38% below for buttons.
-        scale = Math.min(W / PORTRAIT_VIEW_W, ((H - insets.top - insets.bottom) * 0.62) / ROOM_H);
-        view.w = W / scale;
-        view.h = ROOM_H;
-        left = 0;
-        top = insets.top;
-      } else {
-        scale = Math.min(W / VIEW_W, H / MIN_VIEW_H);
-        view.w = VIEW_W;
-        view.h = Math.min(ROOM_H, H / scale);
-        left = (W - view.w * scale) / 2;
-        top = (H - view.h * scale) / 2;
-      }
+      const scale = Math.min(W / VIEW_W, H / MIN_VIEW_H);
+      view.w = VIEW_W;
+      view.h = Math.min(ROOM_H, H / scale);
       view.top = ROOM_H - view.h;
       const cssW = Math.round(view.w * scale);
       const cssH = Math.round(view.h * scale);
-      left = Math.round(left);
-      top = Math.round(top);
+      const left = Math.round((W - cssW) / 2);
+      const top = Math.round((H - cssH) / 2);
       // Only the part of an inset that overlaps the view counts.
       view.safe.left = Math.max(0, insets.left - left) / scale;
       view.safe.right = Math.max(0, insets.right - (W - left - cssW)) / scale;
@@ -1044,7 +1094,7 @@
       hud.w = view.w / hud.scale;
       hud.h = view.h / hud.scale;
       for (const side of Object.keys(view.safe)) hud.safe[side] = view.safe[side] / hud.scale;
-      Object.assign(screenLayout, { left, top, width: cssW, height: cssH, scale, insets, portrait });
+      Object.assign(screenLayout, { left, top, width: cssW, height: cssH, scale, insets });
 
       const ratio = Math.max(1, window.devicePixelRatio || 1);
       canvas.style.left = `${left}px`;
@@ -1061,6 +1111,7 @@
       buildBackdrop();
       buildVignette();
       layoutTouch();
+      showRotateNotice(touchUI && H > W);
       return true;
     }
 
@@ -5240,7 +5291,11 @@
             { text: "Mice can't see you up on the furniture", size: 14, color: SCENE.hudMuted },
             { text: "Bonus boops: grasshopper 15 · fly 25 · bird 40 (sneak up on it!)", size: 14, color: SCENE.hudMuted }
           ]),
-          ...(touchUI ? [] : [{ text: "P  pause          M  sound", size: 14, color: SCENE.hudMuted }]),
+          ...(touchUI ? [] : [{
+            text: fullscreenSupported ? "P  pause          M  sound          F  full screen" : "P  pause          M  sound",
+            size: 14,
+            color: SCENE.hudMuted
+          }]),
           { text: touchUI ? "Tap to start" : "Press Space to start", size: 19, weight: 700, color: `rgba(192, 102, 42, ${pulse})`, space: 16 },
           ...highScoreLines()
         ]);
@@ -5488,8 +5543,13 @@
         cat.cling.dur = Math.max(CLING_MIN, cat.cling.dur - 0.2);
       }
       if ((code === "Space" || code === "Enter") && !repeat) {
-        if (game.state === "title") startGame();
-        else if (game.state === "over" && !game.entry && nowSeconds - game.overAt > RESTART_DELAY) startGame();
+        if (game.state === "title") {
+          startGame();
+          // The first game on a touch screen goes full screen where it can.
+          if (touchUI) fullscreenOnTapEnd = enterFullscreen;
+        } else if (game.state === "over" && !game.entry && nowSeconds - game.overAt > RESTART_DELAY) {
+          startGame();
+        }
       }
 
       if (code === "ArrowLeft") input.ArrowLeft = true;
@@ -5530,6 +5590,7 @@
         return;
       }
       pressControl(e.code, e.repeat);
+      if (e.code === "KeyF" && fullscreenSupported && !e.repeat) toggleFullscreen();
       if (e.code === "KeyH") debug.showHitboxes = !debug.showHitboxes;
     });
 
@@ -5565,7 +5626,8 @@
       const button = e.target.closest("button");
       if (!button) return;
       e.preventDefault();
-      if (button.dataset.tap) pressControl(button.dataset.tap);
+      if (button.dataset.tap === "fullscreen") fullscreenOnTapEnd = toggleFullscreen;
+      else if (button.dataset.tap) pressControl(button.dataset.tap);
       else holdButton(e.pointerId, button);
     });
     window.addEventListener("pointermove", (e) => {
@@ -5573,7 +5635,13 @@
       const over = document.elementFromPoint(e.clientX, e.clientY)?.closest("#touch button[data-control]");
       if (over) holdButton(e.pointerId, over);
     });
-    window.addEventListener("pointerup", (e) => letGo(e.pointerId));
+    window.addEventListener("pointerup", (e) => {
+      letGo(e.pointerId);
+      // Browsers only go full screen from a finished tap (or a key press).
+      const request = fullscreenOnTapEnd;
+      fullscreenOnTapEnd = null;
+      request?.();
+    });
     window.addEventListener("pointercancel", (e) => letGo(e.pointerId));
     window.addEventListener("contextmenu", (e) => e.preventDefault());
     document.addEventListener("visibilitychange", () => {
@@ -5601,49 +5669,88 @@
       if (e.pointerType === "touch") setTouchUI(true);
     }, true);
 
-    // Lays out the touch buttons: over the bottom corners of the view when
-    // the phone is sideways (the pause and sound buttons under the cheese),
-    // or in the space below the view when it is upright. Also notes where
-    // the buttons start, so the edge badges stay above them.
+    // Lays out the touch buttons over the bottom corners of the view, inside
+    // the safe area, with the pause, sound and full-screen buttons under the
+    // cheese. Also notes where the buttons start, so the edge badges stay
+    // above them.
     const padMove = document.getElementById("pad-move");
     const padAct = document.getElementById("pad-act");
     const padMenu = document.getElementById("pad-menu");
-    function place(el, { left = "", right = "", top = "", bottom = "", transform = "" }) {
+    function place(el, { left = "", right = "", top = "", bottom = "" }) {
       const px = (v) => (typeof v === "number" ? `${Math.round(v)}px` : v);
-      Object.assign(el.style, { left: px(left), right: px(right), top: px(top), bottom: px(bottom), transform });
+      Object.assign(el.style, { left: px(left), right: px(right), top: px(top), bottom: px(bottom) });
     }
+    const TOUCH_BUTTON = 60;
     function layoutTouch() {
       touchPanel.hidden = !touchUI;
       screenLayout.buttonsTop = Infinity;
       if (!touchUI) return;
-      const { insets, portrait, scale } = screenLayout;
+      const { insets, scale } = screenLayout;
       const W = window.innerWidth;
       const H = window.innerHeight;
-      const button = portrait ? Math.min(66, (W - 90) / 4.3) : 60;
-      touchPanel.style.setProperty("--button", `${button}px`);
-      touchPanel.classList.toggle("portrait", portrait);
-      if (portrait) {
-        const areaTop = screenLayout.top + screenLayout.height;
-        const areaBottom = H - insets.bottom;
-        const padY = areaTop + (areaBottom - areaTop) * 0.58;
-        place(padMove, { left: insets.left + 18, top: padY, transform: "translateY(-50%)" });
-        place(padAct, { right: insets.right + 18, top: padY, transform: "translateY(-50%)" });
-        place(padMenu, { left: "50%", top: areaTop + 10, transform: "translateX(-50%)" });
-      } else {
-        const bottom = insets.bottom + 14;
-        place(padMove, { left: insets.left + 16, bottom });
-        place(padAct, { right: insets.right + 16, bottom });
-        // Under the cheese panel, lined up with its right edge.
-        const hudBottom = screenLayout.top + (view.safe.top + 66 * hud.scale) * scale;
-        const viewRight = W - screenLayout.left - screenLayout.width;
-        place(padMenu, { right: viewRight + (view.safe.right + 16 * hud.scale) * scale, top: hudBottom });
-        screenLayout.buttonsTop = H - bottom - button * 1.22;
-      }
+      touchPanel.style.setProperty("--button", `${TOUCH_BUTTON}px`);
+      const bottom = insets.bottom + 14;
+      place(padMove, { left: insets.left + 16, bottom });
+      place(padAct, { right: insets.right + 16, bottom });
+      const hudBottom = screenLayout.top + (view.safe.top + 66 * hud.scale) * scale;
+      const viewRight = W - screenLayout.left - screenLayout.width;
+      place(padMenu, { right: viewRight + (view.safe.right + 16 * hud.scale) * scale, top: hudBottom });
+      screenLayout.buttonsTop = H - bottom - TOUCH_BUTTON * 1.22;
     }
 
     // How far down the view the touch buttons start, in view units.
     function touchButtonsTop() {
       return (screenLayout.buttonsTop - screenLayout.top) / screenLayout.scale;
+    }
+
+    // Full screen, where the browser allows it (Android, iPad and computers;
+    // Safari on iPhone has so far only allowed it for videos): a toggle among
+    // the touch buttons, the F key, and the first game started from a touch
+    // screen. Full screen also locks the screen sideways where it can
+    // (Android). An installed app is full screen already.
+    const fullscreenSupported = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+    const installed = window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
+    // Set by a tap that should go full screen once it ends (see pointerup).
+    let fullscreenOnTapEnd = null;
+    function isFullscreen() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+    function enterFullscreen() {
+      if (!fullscreenSupported || isFullscreen()) return;
+      const root = document.documentElement;
+      const request = root.requestFullscreen ? root.requestFullscreen({ navigationUI: "hide" }) : root.webkitRequestFullscreen();
+      Promise.resolve(request)
+        .then(() => screen.orientation?.lock?.("landscape"))
+        .catch(() => {
+          // Refused, or the screen can't be locked: the game carries on as it is.
+        });
+    }
+    function toggleFullscreen() {
+      if (!isFullscreen()) {
+        enterFullscreen();
+        return;
+      }
+      const exit = document.exitFullscreen ?? document.webkitExitFullscreen;
+      Promise.resolve(exit?.call(document)).catch(() => {});
+    }
+    document.getElementById("fullscreen-button").hidden = !fullscreenSupported || installed;
+    for (const type of ["fullscreenchange", "webkitfullscreenchange"]) {
+      document.addEventListener(type, () => touchPanel.classList.toggle("full", isFullscreen()));
+    }
+
+    // A touch screen held upright: the game pauses behind a notice to turn
+    // it sideways, which offers full screen where the browser allows it (on
+    // Android that also turns the game sideways at once).
+    const rotateNotice = document.getElementById("rotate");
+    const rotateFullscreen = document.getElementById("rotate-fullscreen");
+    rotateFullscreen.hidden = !fullscreenSupported || installed;
+    rotateFullscreen.addEventListener("click", () => enterFullscreen());
+    function showRotateNotice(show) {
+      if (show === !rotateNotice.hidden) return;
+      rotateNotice.hidden = !show;
+      if (!show) return;
+      releaseAll();
+      if (game.state === "playing") game.paused = true;
     }
 
     // The name field for a high score on a touch screen: shown once the
