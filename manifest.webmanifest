@@ -1,12 +1,12 @@
 {
-  "name": "Cheese Chase",
-  "short_name": "Cheese Chase",
+  "name": "Catwalk",
+  "short_name": "Catwalk",
   "description": "A fluffy black cat boops mice on the nose to save the cheese.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
-  "orientation": "landscape",
+  "orientation": "any",
   "background_color": "#3a2e26",
   "theme_color": "#3a2e26",
   "icons": [

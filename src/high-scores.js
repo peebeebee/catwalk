@@ -1,4 +1,4 @@
-// High scores for Cheese Chase: the best few games with the player's name,
+// High scores for Catwalk: the best few games with the player's name,
 // kept in the browser by index.html. These helpers stay pure so the rules
 // can be tested; the runtime does the storing.
 

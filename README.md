@@ -1,4 +1,4 @@
-# Cheese Chase
+# Catwalk
 
 A fluffy black cat, a room full of furniture, and mice running off with the
 cheese. Boop them on the nose and they'll drop it. Nobody gets hurt.
@@ -21,7 +21,11 @@ Boops from the air score double, quick boops build a streak, and the mice
 can't see you up on the furniture. Grasshoppers, flies and a little bird are
 worth bonus points. From wave 6 a dog gallops through: jump over it.
 
-The game needs a keyboard for now; touch controls aren't there yet.
+On a phone or tablet, buttons appear on the screen: left and right to run,
+up to jump (tap for a hop, hold to jump high), down to sneak, plus pause and
+sound. Held sideways the room fills the screen with the buttons in the bottom
+corners; held upright the room runs across the top with the buttons below.
+Tap the screen to start or play again.
 
 ## Install it as an app
 

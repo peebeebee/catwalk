@@ -1,4 +1,4 @@
-// Pure rules for Cheese Chase: waves, mouse kinds and scoring. Mice carry
+// Pure rules for Catwalk: waves, mouse kinds and scoring. Mice carry
 // cheese across the room; a boop on the nose makes them drop it. The runtime
 // in index.html owns the state; these helpers stay deterministic for tests.
 import { clamp } from "./cat-physics.js";

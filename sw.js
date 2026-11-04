@@ -1,7 +1,7 @@
 // Service worker: lets the installed game start without a network.
 // Network first, so a new deploy shows up as soon as the game is opened
 // online; every file fetched is kept, and the kept copy is used offline.
-const CACHE = "cheese-chase-v1";
+const CACHE = "catwalk-v1";
 const FILES = [
   "./",
   "./index.html",
