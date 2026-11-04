@@ -1,0 +1,8 @@
+node_modules/
+_site/
+# Screenshots and logs from local checks.
+output/
+.playwright-cli/
+# Local editor and assistant settings.
+.claude/
+.DS_Store
