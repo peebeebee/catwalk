@@ -55,7 +55,8 @@
       touch-action: pan-y;
     }
 
-    #swipe-hint {
+    #swipe-hint,
+    #zoom-hint {
       position: fixed;
       inset: 0;
       display: flex;
@@ -70,7 +71,8 @@
       touch-action: pan-y;
     }
 
-    #swipe-hint small {
+    #swipe-hint small,
+    #zoom-hint small {
       font-size: 15px;
       font-weight: 500;
       opacity: 0.8;
@@ -91,6 +93,23 @@
       0% { transform: translateY(18px); opacity: 0; }
       30% { opacity: 1; }
       100% { transform: translateY(-18px); opacity: 0; }
+    }
+
+    /* Zoomed in after all (see the zoom guard): pinching is let through so
+       it can zoom back out, and #zoom-hint covers what's on screen, placed
+       and sized by updateZoomHint. */
+    html.zoomed body {
+      touch-action: manipulation;
+    }
+
+    #zoom-hint {
+      inset: auto;
+      left: 0;
+      top: 0;
+      z-index: 3;
+      transform-origin: 0 0;
+      background: rgba(58, 46, 38, 0.9);
+      touch-action: manipulation;
     }
 
     /* Placed and sized by fitCanvas; whatever it leaves frames the view. */
@@ -290,6 +309,10 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20 V5 M6 11 L12 5 L18 11" /></svg>
     <div>Swipe up to play full screen</div>
     <small>or tap to play as it is</small>
+  </div>
+  <div id="zoom-hint" hidden>
+    <div>Zoomed in by accident?</div>
+    <small>Pinch to zoom back out</small>
   </div>
   <form id="name-form" hidden>
     <input id="name-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="Your name" aria-label="Your name" />
@@ -5870,6 +5893,52 @@
       game.entry = null;
       syncNameForm();
     });
+
+    // Zoom guard. Safari on iPhone zooms a page whatever the viewport tag
+    // says, by a pinch or a double tap. touch-action: none stops most of
+    // that; Safari's own pinch gestures and quick second taps are cancelled
+    // here as well. If the page still ends up zoomed in, no script can zoom
+    // it back out, and touch-action: none would stop a pinch doing it too:
+    // so the game pauses, lets pinches through and asks for one.
+    const zoomHint = document.getElementById("zoom-hint");
+    const visual = window.visualViewport;
+    const zoomedIn = () => !!visual && visual.scale > 1.01;
+    for (const type of ["gesturestart", "gesturechange"]) {
+      document.addEventListener(type, (e) => {
+        if (!zoomedIn()) e.preventDefault();
+      }, { passive: false });
+    }
+    let lastTap = null;
+    document.addEventListener("touchend", (e) => {
+      // A double tap is a quick second tap on the same spot. Cancelling its
+      // touchend stops the zoom, and that tap's click: the game's buttons
+      // and the view work on pointer events, so only a click on the same
+      // form button or hint a moment ago goes.
+      const touch = e.changedTouches[0];
+      const tap = { time: e.timeStamp, x: touch.clientX, y: touch.clientY };
+      const again = lastTap && tap.time - lastTap.time < 350 &&
+        Math.hypot(tap.x - lastTap.x, tap.y - lastTap.y) < 60;
+      lastTap = tap;
+      if (again && !zoomedIn() && e.target !== nameInput) e.preventDefault();
+    }, { passive: false });
+    function updateZoomHint() {
+      const zoomed = zoomedIn();
+      document.documentElement.classList.toggle("zoomed", zoomed);
+      if (zoomed) {
+        // Over the part of the page on screen, at the screen's own scale.
+        zoomHint.style.width = `${visual.width * visual.scale}px`;
+        zoomHint.style.height = `${visual.height * visual.scale}px`;
+        zoomHint.style.transform = `translate(${visual.offsetLeft}px, ${visual.offsetTop}px) scale(${1 / visual.scale})`;
+      }
+      if (zoomed === !zoomHint.hidden) return;
+      zoomHint.hidden = !zoomed;
+      if (!zoomed) return;
+      releaseAll();
+      if (game.state === "playing") game.paused = true;
+    }
+    visual?.addEventListener("resize", updateZoomHint);
+    visual?.addEventListener("scroll", updateZoomHint);
+    updateZoomHint();
 
     layoutRoom();
     cat.y = centerYForSurface(floorY);
