@@ -28,10 +28,8 @@
     }
 
     /* No scrolling, zooming, text selection or long-press menus: on a phone
-       every touch is for the game. */
+       every touch is for the game. Everything on screen is fixed in place. */
     body {
-      position: fixed;
-      inset: 0;
       touch-action: none;
       overscroll-behavior: none;
       -webkit-user-select: none;
@@ -40,9 +38,64 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* Safari on iPhone hides its bars when the page is swiped up, so there
+       the page can scroll into #swipe-room, but only while #swipe-hint asks
+       for that swipe (see updateSwipeHint). */
+    html.swipe-room,
+    html.swipe-room body {
+      height: auto;
+      overflow: visible;
+    }
+
+    #swipe-room {
+      height: 300vh;
+    }
+
+    html.swipe-hint body {
+      touch-action: pan-y;
+    }
+
+    #swipe-hint {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      color: #faf6ef;
+      background: rgba(58, 46, 38, 0.72);
+      font: 700 22px system-ui, -apple-system, "Segoe UI", sans-serif;
+      touch-action: pan-y;
+    }
+
+    #swipe-hint small {
+      font-size: 15px;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+
+    #swipe-hint svg {
+      width: 54px;
+      height: 54px;
+      fill: none;
+      stroke: #f2c94c;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      animation: swipe 1.6s ease-in-out infinite;
+    }
+
+    @keyframes swipe {
+      0% { transform: translateY(18px); opacity: 0; }
+      30% { opacity: 1; }
+      100% { transform: translateY(-18px); opacity: 0; }
+    }
+
     /* Placed and sized by fitCanvas; whatever it leaves frames the view. */
     canvas {
-      position: absolute;
+      position: fixed;
       display: block;
       background: #faf6ef;
       box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
@@ -51,7 +104,7 @@
     /* Touch buttons, placed by layoutTouch: see-through, over the bottom
        corners of the room. */
     #touch .pad {
-      position: absolute;
+      position: fixed;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -114,6 +167,7 @@
     /* On a touch screen held upright: turn it sideways to play. */
     #rotate {
       position: fixed;
+      z-index: 2;
       inset: 0;
       display: flex;
       flex-direction: column;
@@ -230,6 +284,12 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2" /><path d="M11 18.5 H13" /></svg>
     <p>Turn your phone sideways to play</p>
     <button id="rotate-fullscreen" hidden>Play full screen</button>
+  </div>
+  <div id="swipe-room" hidden></div>
+  <div id="swipe-hint" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20 V5 M6 11 L12 5 L18 11" /></svg>
+    <div>Swipe up to play full screen</div>
+    <small>or tap to play as it is</small>
   </div>
   <form id="name-form" hidden>
     <input id="name-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="Your name" aria-label="Your name" />
@@ -1112,6 +1172,7 @@
       buildVignette();
       layoutTouch();
       showRotateNotice(touchUI && H > W);
+      updateSwipeHint();
       return true;
     }
 
@@ -5752,6 +5813,35 @@
       releaseAll();
       if (game.state === "playing") game.paused = true;
     }
+
+    // Safari on iPhone can't go full screen, but held sideways it hides its
+    // bars when the page is swiped up (a scroll from script doesn't). So
+    // there the page has room to scroll, and while the bars show a hint asks
+    // for that swipe; a tap dismisses it. Scrolling is only allowed while
+    // the hint is up, so playing never moves the page.
+    const swipeHint = document.getElementById("swipe-hint");
+    const iPhoneSafari = navigator.standalone === false && !fullscreenSupported;
+    let swipeHintDismissed = false;
+    if (iPhoneSafari) {
+      document.documentElement.classList.add("swipe-room");
+      document.getElementById("swipe-room").hidden = false;
+    }
+    function updateSwipeHint() {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const barsShowing = H < Math.min(screen.width, screen.height) - 8;
+      const show = iPhoneSafari && touchUI && W > H && barsShowing && !swipeHintDismissed;
+      if (show === !swipeHint.hidden) return;
+      swipeHint.hidden = !show;
+      document.documentElement.classList.toggle("swipe-hint", show);
+      if (!show) return;
+      releaseAll();
+      if (game.state === "playing") game.paused = true;
+    }
+    swipeHint.addEventListener("click", () => {
+      swipeHintDismissed = true;
+      updateSwipeHint();
+    });
 
     // The name field for a high score on a touch screen: shown once the
     // game-over card's prompts are up, starting from the last name used.

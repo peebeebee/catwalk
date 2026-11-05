@@ -26,8 +26,10 @@ On a phone or tablet the game plays sideways: held upright it asks to be
 turned. Buttons appear on the screen: left and right to run, up to jump (tap
 for a hop, hold to jump high), down to sneak, plus pause, sound and full
 screen. Tap the screen to start or play again; the first game goes full
-screen where the browser allows it (Android, iPad; Safari on iPhone has so
-far only allowed full screen for videos, so there use *Add to Home Screen*).
+screen where the browser allows it (Android, iPad). Safari on iPhone only
+allows full screen for videos, so there the game asks you to swipe up once
+when it's sideways: that hides Safari's bars and the game fills the screen.
+*Add to Home Screen* works too.
 
 ## Install it as an app
 
